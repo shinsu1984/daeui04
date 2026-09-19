@@ -1298,12 +1298,66 @@ function expandSeatList(bus){
   return list;
 }
 function renderBusGrid(bus){
-  // 실제 버스 좌석처럼 2명씩 짝지어 표시해요 (2인 2인 2인 배치)
-  const seats=expandSeatList(bus); let rows=[]; for(let i=0;i<seats.length;i+=2) rows.push(seats.slice(i,i+2));
-  return rows.map((row,ri)=>{
-    const cells=row.map(s=>`<div class="seat ${s.mine?'mine':''} ${s.staff?'staff':''}">${escapeHtml(s.label)}</div>`);
-    while(cells.length<2) cells.push('<div></div>');
-    return `<div class="seatrow"><span class="seatrow-no">${ri+1}열</span>${cells.join('')}</div>`;
+// 12열 x 4석 = 총 48석 (47인승 버스 완벽 대응)
+  let grid = Array.from({length: 12}, () => [null, null, null, null]);
+  const isMine = bus.schools.some(([n])=>n===TRIP.shortName);
+  
+  // 1. 우리 학교 짝꿍 자리 배치 (관리자에서 설정한 열/위치)
+  if(isMine) {
+    const pairs = getBusPairs();
+    pairs.forEach(p => {
+      if(p.a || p.b) {
+        const r = Math.min(11, Math.max(0, (p.row || 1) - 1)); // 1~12열
+        const isLeft = p.col !== 'R'; // 왼쪽(L) or 오른쪽(R)
+        const nA = busPairStudentName(p.a) || '빈자리';
+        const nB = busPairStudentName(p.b) || '빈자리';
+        
+        // 왼쪽에 앉히면 [0][1], 오른쪽에 앉히면 [2][3] 자리에 배정
+        if(isLeft) {
+          grid[r][0] = { label: nA, mine: true };
+          grid[r][1] = { label: nB, mine: true };
+        } else {
+          grid[r][2] = { label: nA, mine: true };
+          grid[r][3] = { label: nB, mine: true };
+        }
+      }
+    });
+  }
+
+  // 2. 다른 학교 학생 및 인솔교사는 남는 빈자리에 차례대로 채우기
+  const others = [];
+  bus.schools.forEach(([sname, cnt]) => {
+    if (isMine && sname === TRIP.shortName) return; 
+    for(let i=0;i<cnt;i++) others.push({label: sname, mine: false});
+  });
+  bus.staff.forEach(([sname, cnt]) => {
+    for(let i=0;i<cnt;i++) others.push({label: sname, mine:false, staff:true});
+  });
+  
+  let oIdx = 0;
+  for(let r=0; r<12; r++) {
+    for(let c=0; c<4; c++) {
+      if(grid[r][c] === null && oIdx < others.length) {
+        grid[r][c] = others[oIdx++];
+      }
+    }
+  }
+
+  // 3. 실제 버스 모양(가운데 통로)으로 HTML 그리기
+  return grid.map((row, r) => {
+    const renderSeat = (cell) => {
+      if(!cell) return `<div class="seat" style="border:1.5px dashed var(--line); background:transparent; color:transparent;">-</div>`;
+      return `<div class="seat ${cell.mine?'mine':''} ${cell.staff?'staff':''}" style="padding:8px 2px; font-size:10.5px; word-break:keep-all;">${escapeHtml(cell.label)}</div>`;
+    };
+    // 가운데 통로(14px)를 둔 4열 배치
+    return `<div style="display:grid; grid-template-columns:26px 1fr 1fr 14px 1fr 1fr; gap:5px; align-items:center; margin-bottom:8px; text-align:center;">
+      <span style="font-size:11px; color:var(--ink-soft); font-weight:700;">${r+1}열</span>
+      ${renderSeat(row[0])}
+      ${renderSeat(row[1])}
+      <div></div> <!-- 버스 복도 -->
+      ${renderSeat(row[2])}
+      ${renderSeat(row[3])}
+    </div>`;
   }).join('');
 }
 /* 우리 학교 학생 버스 짝꿍(2인 1자리) — 누가 어디 앉을지는 담임 선생님이 관리자 메뉴에서 나중에 정해요 */
@@ -1449,57 +1503,68 @@ function pairOptionsHtml(roster, selectedId){
   return html;
 }
 function openAdminPanel(){
-  const roster=lsGet('roster', ROSTER_DEFAULT), teacher=lsGet('teacher', TEACHER_DEFAULT), principal=lsGet('principal', PRINCIPAL_DEFAULT), school=lsGet('school_contact', SCHOOL_CONTACT_DEFAULT);
+const roster=lsGet('roster', ROSTER_DEFAULT), teacher=lsGet('teacher', TEACHER_DEFAULT), principal=lsGet('principal', PRINCIPAL_DEFAULT), school=lsGet('school_contact', SCHOOL_CONTACT_DEFAULT);
   const pairs=getBusPairs();
   openSheet(`<button class="closeX" onclick="closeModal()">✕</button><h3>⚙️ 관리자 설정</h3>
-    <label class="field">우리 반 학생 명단 (${TRIP.studentCount}명 · 남 ${TRIP.boyCount} · 여 ${TRIP.girlCount})</label>
+    <label class="field">우리 반 학생 명단 (${TRIP.studentCount}명)</label>
     <div>${roster.map(s=>`<div style="display:flex; gap:6px; margin-bottom:8px;">
         <input type="text" value="${escAttr(s.name)}" class="rname" style="flex:1;">
         <select class="rgender" style="border:1.5px solid var(--line); border-radius:11px; padding:0 8px; background:var(--paper);">
           <option value="남" ${s.gender==='남'?'selected':''}>남</option><option value="여" ${s.gender==='여'?'selected':''}>여</option>
         </select></div>`).join('')}</div>
-    <hr class="dashed"><label class="field">🚌 버스 짝꿍 자리 (2명씩 ${pairs.length}자리) — 정해지면 학생 화면에 바로 표시돼요</label>
-    ${pairs.map((p,i)=>`<div class="pairselrow"><span class="no">${i+1}번</span>
-        <select class="pairSel" data-slot="${i}" data-side="a">${pairOptionsHtml(roster, p.a)}</select>
+    <hr class="dashed"><label class="field">🚌 버스 짝꿍 위치 지정 (1~12열)</label>
+    ${pairs.map((p,i)=>`<div style="margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #f0f0f0;">
+      <div class="pairselrow" style="margin-bottom:6px;">
+        <span class="no" style="font-weight:700;">${i+1}번짝</span>
+        <select class="pairSel" data-slot="${i}" data-side="a" style="flex:1;">${pairOptionsHtml(roster, p.a)}</select>
         <span style="color:var(--ink-faint);">&amp;</span>
-        <select class="pairSel" data-slot="${i}" data-side="b">${pairOptionsHtml(roster, p.b)}</select>
-      </div>`).join('')}
-    <hr class="dashed"><label class="field">담임(인솔) 선생님</label>
+        <select class="pairSel" data-slot="${i}" data-side="b" style="flex:1;">${pairOptionsHtml(roster, p.b)}</select>
+      </div>
+      <div class="pairselrow" style="padding-left:38px; display:flex; gap:6px;">
+        <span style="font-size:11px; color:var(--ink-soft); width:28px;">위치:</span>
+        <select class="pairRow" data-slot="${i}" style="flex:1; border:1.5px solid var(--line); border-radius:8px; padding:4px;">
+          ${Array.from({length:12}, (_,r)=>`<option value="${r+1}" ${p.row===(r+1)?'selected':''}>${r+1}열</option>`).join('')}
+        </select>
+        <select class="pairCol" data-slot="${i}" style="flex:1; border:1.5px solid var(--line); border-radius:8px; padding:4px;">
+          <option value="L" ${p.col!=='R'?'selected':''}>왼쪽 (2석)</option><option value="R" ${p.col==='R'?'selected':''}>오른쪽 (2석)</option>
+        </select>
+      </div>
+    </div>`).join('')}
+    <label class="field">담임(인솔) 선생님</label>
     <input type="text" id="teacherName" placeholder="이름" value="${escAttr(teacher.name)}" style="margin-bottom:8px;">
-    <input type="tel" id="teacherPhone" placeholder="연락처 (예: 010-0000-0000)" value="${escAttr(teacher.phone)}">
-    <hr class="dashed"><label class="field">교장 선생님 (선택)</label>
-    <input type="text" id="principalName" placeholder="이름" value="${escAttr(principal.name)}" style="margin-bottom:8px;">
-    <input type="tel" id="principalPhone" placeholder="연락처 (비워두면 '가정통신문 참고'로 표시)" value="${escAttr(principal.phone)}">
+    <input type="tel" id="teacherPhone" placeholder="연락처" value="${escAttr(teacher.phone)}">
     <hr class="dashed"><label class="field">학교 교무실 번호</label>
     <input type="tel" id="schoolPhone" value="${escAttr(school.office)}">
-    <hr class="dashed"><label class="field">관리자 비밀번호 변경 (선택)</label>
-    <input type="password" id="newPass" placeholder="새 비밀번호">
     <button class="btn gold block" style="margin-top:16px;" onclick="saveAdmin()">저장</button>
-    <button class="btn ghost block" style="margin-top:8px;" onclick="confirmReset()">🗑️ 이 기기 기록 초기화</button>`);
+  `);
 }
 function saveAdmin(){
 const names=[...document.querySelectorAll('.rname')], genders=[...document.querySelectorAll('.rgender')];
   const roster=names.map((el,i)=>({id:i+1, name:el.value.trim()||('학생'+(i+1)), gender:genders[i].value}));
   lsSet('roster', roster);
+  
+  // 관리자가 선택한 열(row)과 위치(col) 값도 함께 저장!
   const pairs=getBusPairs().map((_,i)=>({
     a: (document.querySelector(`.pairSel[data-slot="${i}"][data-side="a"]`)||{}).value || null,
     b: (document.querySelector(`.pairSel[data-slot="${i}"][data-side="b"]`)||{}).value || null,
+    row: Number((document.querySelector(`.pairRow[data-slot="${i}"]`)||{}).value) || 1,
+    col: (document.querySelector(`.pairCol[data-slot="${i}"]`)||{}).value || 'L'
   }));
   lsSet('bus_pairs', pairs);
+  
   const teacherInfo = {name:document.getElementById('teacherName').value.trim()||TEACHER_DEFAULT.name, phone:document.getElementById('teacherPhone').value.trim()};
   lsSet('teacher', teacherInfo);
   const principalInfo = {name:document.getElementById('principalName').value.trim()||PRINCIPAL_DEFAULT.name, phone:document.getElementById('principalPhone').value.trim()};
   lsSet('principal', principalInfo);
   const schoolInfo = {office:document.getElementById('schoolPhone').value.trim()};
   lsSet('school_contact', schoolInfo);
-  const np=document.getElementById('newPass').value.trim(); if(np) lsSet('admin_pass', np);
 
+  // 파이어베이스로 서버 전송
   if(firebaseReady){
     db.collection('settings').doc(TRIP.shortName).set({
       roster: roster, bus_pairs: pairs, teacher: teacherInfo, principal: principalInfo, school_contact: schoolInfo, updatedAt: Date.now()
     }, {merge:true}).catch(e=>console.warn("설정 전송 실패", e));
   }
-
   toast('저장했어요!'); closeModal(); renderAll();
 }
 function confirmReset(){ if(confirm('이 기기에 저장된 모든 기록(퀴즈, 스탬프, 사진, 용돈 등)을 초기화할까요?')) resetAllData(); }
