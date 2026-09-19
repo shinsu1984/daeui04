@@ -46,7 +46,7 @@ button{font-family:inherit;}
 @media (prefers-reduced-motion: reduce){ *{animation-duration:.001ms !important; transition-duration:.001ms !important;} }
 
 /* 히어로 헤더 */
-.hero{ background:linear-gradient(150deg, var(--navy-900) 0%, var(--navy-700) 100%); color:#f4ecd8; padding:12px 20px 14px; position:relative; overflow:hidden; }
+.hero{ background:linear-gradient(150deg, var(--navy-900) 0%, var(--navy-700) 100%); color:#f4ecd8; padding:calc(18px + env(safe-area-inset-top, 0px)) 20px 26px; position:relative; overflow:hidden; }
 .hero::before{ content:""; position:absolute; inset:0;
   background:radial-gradient(420px 200px at 90% -40px, rgba(255,178,56,.22), transparent 60%),
   radial-gradient(300px 180px at 6% 110%, rgba(255,106,77,.20), transparent 65%),
