@@ -61,7 +61,7 @@ button{font-family:inherit;}
   padding:6px 11px; font-size:11px; display:flex; align-items:center; gap:5px; cursor:pointer; white-space:nowrap;}
 .stamp-badge{ position:relative; min-width:52px; height:52px; border-radius:50%; border:2px dashed var(--sun);
   color:#ffe9c2; background:rgba(255,178,56,.16); display:flex; flex-direction:column; align-items:center; justify-content:center;
-  transform:rotate(-9deg); flex-shrink:0; box-shadow:0 0 0 3px rgba(255,178,56,.08);}
+  transform:rotate(-9deg); flex-shrink:0; box-shadow:0 0 0 3px rgba(255,178,56,.08); margin-top:16px;}
 .stamp-badge b{font-family:'Jua','Pretendard',sans-serif; font-weight:400; font-size:14px; line-height:1; color:#fff3d9;}
 .stamp-badge span{font-size:7.5px; letter-spacing:.02em; margin-top:2px; text-align:center; padding:0 4px;}
 .ticket-notch{ height:15px; margin-top:-1px;
@@ -567,12 +567,18 @@ function stampPointsEarned(){ const stamps=getStamps(); return GUIDE.reduce((s,g
 function stampTotalPoints(){ const count=Object.keys(getStamps()).length; return stampPointsEarned()+stampBonus(count); }
 function getPhotoChallenges(){ return lsGet('photo_challenges', {}); }
 function sumPhotoScore(){ const d=getPhotoChallenges(); let s=0; PHOTO_CHALLENGES.forEach(c=>{ if(d[c.id]) s+=c.points; }); return s+lsGet('random_score', 0); }
+/* 사진 업로드 점수 — "내 사진"과 "공유 갤러리"에 사진을 한 장 올릴 때마다 2점씩.
+   포토챌린지 점수와는 별개로 집계했다가, 포토 랭킹(photoScore)에는 합쳐서 반영해요. */
+function photoUploadCount(){ return getMyPhotos().length + lsGet('shared_photo_count', 0); }
+function photoUploadScore(){ return photoUploadCount() * 2; }
 async function syncMyScore(){
   const name=getMyName(); if(!name) return;
-  const quiz=sumQuizScore(), mission=sumPhotoScore(), stampPts=stampTotalPoints();
+  const quiz=sumQuizScore(), challengeScore=sumPhotoScore(), stampPts=stampTotalPoints();
   const jpPts = jpLearnedCount() * 5; // 일본어 5점 합산
-  const total=quiz+mission+stampPts+jpPts;
-  await submitRanking(name, {name, quizScore:quiz, photoScore:mission, stampScore:stampPts, jpScore:jpPts, totalScore:total, updatedAt:Date.now()});
+  const uploadPts = photoUploadScore(); // 사진 업로드 2점씩
+  const photoScore = challengeScore + uploadPts; // 포토랭킹은 포토챌린지+업로드 합산
+  const total = quiz + photoScore + stampPts + jpPts;
+  await submitRanking(name, {name, quizScore:quiz, photoScore, stampScore:stampPts, jpScore:jpPts, uploadScore:uploadPts, totalScore:total, updatedAt:Date.now()});
 }
 
 /* =========================================================================
@@ -616,10 +622,10 @@ function viewHome(){
   } else {
     scheduleBlock=`<div class="card"><h3>📅 오늘 일정</h3><p>수학여행이 끝났어요. 즐거운 추억 가득했길 바라요! 🌟 사진 탭에서 추억을 다시 볼 수 있어요.</p></div>`;
   }
-  const q=sumQuizScore(), st=Object.keys(getStamps()).length, ph=sumPhotoScore(), hint=nextMissionHint();
+  const q=sumQuizScore(), st=Object.keys(getStamps()).length, ph=sumPhotoScore(), jp=jpLearnedCount()*5, up=photoUploadScore(), hint=nextMissionHint();
   return `<div class="wrap"><div class="banner info">🔔 <b>출발 안내</b> · ${fmtMD(TRIP.startDate)} ${TRIP.meetTime} ${TRIP.meetPlace} 집결이에요. 늦지 않게 도착해요!</div>
     ${scheduleBlock}
-    <div class="stats"><div class="stat"><b>${q}</b><span>퀴즈 점수</span></div><div class="stat"><b>${st}/${GUIDE.length}</b><span>스탬프</span></div><div class="stat"><b>${ph}</b><span>📸 미션 점수</span></div><div class="stat"><b id="myRankStat">–</b><span>내 순위</span></div></div>
+    <div class="stats"><div class="stat"><b>${q}</b><span>퀴즈 점수</span></div><div class="stat"><b>${st}/${GUIDE.length}</b><span>스탬프</span></div><div class="stat"><b>${ph}</b><span>📸 미션 점수</span></div><div class="stat"><b>${up}</b><span>📷 사진 점수</span></div><div class="stat"><b>${jp}</b><span>🇯🇵 일본어 점수</span></div><div class="stat"><b id="myRankStat">–</b><span>내 순위</span></div></div>
     <div class="card"><h3>⚡ 빠른 실행</h3><div class="quickgrid">
       <button class="quickbtn" onclick="ui.tab='mission'; ui.missionSub='stamp'; renderAll();"><span class="emoji">🏅</span><b>스탬프 받기</b><span>GPS 위치 인증</span></button>
       <button class="quickbtn" onclick="ui.tab='mission'; ui.missionSub='photo'; renderAll();"><span class="emoji">📸</span><b>포토챌린지</b><span>사진 올리면 완료</span></button>
@@ -651,10 +657,25 @@ function missionQuizHtml(){
   });
   return html;
 }
+/* 보기 순서 섞기 — 정답이 항상 1번(0번 인덱스)에 있던 문제라 화면에 보여줄 때만
+   순서를 랜덤으로 섞어요. answerQuiz()로 넘기는 인덱스는 원래(정답 판정용) 인덱스
+   그대로라서 채점 로직은 손댈 필요가 없어요. 같은 세션 안에서는 한 번 섞이면
+   유지되고(문제를 열었다 닫았다 해도 순서가 안 바뀜), 새로고침하면 다시 섞여요. */
+const QUIZ_OPTION_ORDER = {};
+function getQuizOptionOrder(qid, qi, len){
+  const key = qid+'_'+qi;
+  if(!QUIZ_OPTION_ORDER[key]){
+    const arr = Array.from({length:len}, (_,i)=>i);
+    for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+    QUIZ_OPTION_ORDER[key]=arr;
+  }
+  return QUIZ_OPTION_ORDER[key];
+}
 function renderQuizQuestion(set,q,qi){
   const a=getQuizAnswers(); const chosen=a[quizAnswerKey(set.id,qi)]; const answered=chosen!==undefined;
+  const order=getQuizOptionOrder(set.id, qi, q.opts.length);
   return `<div style="margin-bottom:6px;"><div style="font-size:11px; color:var(--brass-deep); font-weight:700; margin-bottom:4px;">${q.type}</div><div style="font-size:13.5px; font-weight:600; margin-bottom:9px;">${q.q}</div>
-    ${q.opts.map((opt,oi)=>{ let cls='qopt'; if(answered){ if(oi===q.answer) cls+=' correct'; else if(oi===chosen) cls+=' wrong'; } return `<button class="${cls}" ${answered?'disabled':''} onclick="answerQuiz('${set.id}',${qi},${oi})">${opt}</button>`; }).join('')}
+    ${order.map(oi=>{ const opt=q.opts[oi]; let cls='qopt'; if(answered){ if(oi===q.answer) cls+=' correct'; else if(oi===chosen) cls+=' wrong'; } return `<button class="${cls}" ${answered?'disabled':''} onclick="answerQuiz('${set.id}',${qi},${oi})">${opt}</button>`; }).join('')}
     ${answered?`<p style="font-size:12px; color:var(--ink-soft); margin-top:4px;">💡 ${q.note}</p>`:''}</div>`;
 }
 function answerQuiz(qid,qi,oi){
@@ -858,7 +879,7 @@ function myPhotoHtml(){
 }
 async function addMyPhoto(input){
   const file=input.files[0]; if(!file) return;
-  try{ const dataUrl=await compressImage(file, 900, 0.7); const photos=getMyPhotos(); photos.push({img:dataUrl, ts:Date.now()}); lsSet('my_photos', photos); toast('사진을 저장했어요!'); renderAll(); }
+  try{ const dataUrl=await compressImage(file, 900, 0.7); const photos=getMyPhotos(); photos.push({img:dataUrl, ts:Date.now()}); lsSet('my_photos', photos); toast('사진을 저장했어요! (+2점)'); renderAll(); syncMyScore(); }
   catch(e){ toast('사진을 불러오지 못했어요.'); }
 }
 function sharedGalleryHtml(){
@@ -875,7 +896,7 @@ function sharedGalleryHtml(){
 }
 let pendingSharedPhoto=null;
 async function pickSharedPhoto(input){ const file=input.files[0]; if(!file) return; try{ pendingSharedPhoto=await compressImage(file, 800, 0.6); toast('사진을 선택했어요. 올리기를 눌러주세요.'); }catch(e){ toast('사진을 불러오지 못했어요.'); } }
-async function uploadSharedPhoto(){ if(!pendingSharedPhoto){ toast('사진을 먼저 선택해주세요.'); return; } const name=getMyName()||'이름 미등록'; const caption=document.getElementById('galCaption').value.trim(); await addGalleryPhoto({name, img:pendingSharedPhoto, caption, createdAt:Date.now()}); pendingSharedPhoto=null; toast('갤러리에 올렸어요!'); loadGallery(); }
+async function uploadSharedPhoto(){ if(!pendingSharedPhoto){ toast('사진을 먼저 선택해주세요.'); return; } const name=getMyName()||'이름 미등록'; const caption=document.getElementById('galCaption').value.trim(); await addGalleryPhoto({name, img:pendingSharedPhoto, caption, createdAt:Date.now()}); pendingSharedPhoto=null; lsSet('shared_photo_count', lsGet('shared_photo_count',0)+1); toast('갤러리에 올렸어요! (+2점)'); loadGallery(); syncMyScore(); }
 async function loadGallery(){ const el=document.getElementById('galleryBody'); if(!el) return; const list=await fetchGallery(); window.__gallery=list; if(list.length===0){ el.innerHTML='<div class="empty">아직 올라온 사진이 없어요.</div>'; return; } el.innerHTML=`<div class="pgrid">`+list.map((p,i)=>`<div class="pitem">${isAdminSession?`<button class="pdelete" onclick="onDeleteGalleryPhoto(${i})" title="삭제">✕</button>`:''}<img src="${p.img}"><div class="pcap">${escapeHtml(p.name||'')}${p.caption?' · '+escapeHtml(p.caption):''}</div></div>`).join('')+`</div>`; }
 async function onDeleteGalleryPhoto(i){ if(!confirm('이 사진을 삭제할까요? 되돌릴 수 없어요.')) return; const ok=await deleteGalleryPhotoAt(window.__gallery||[], i); if(ok){ toast('삭제했어요.'); loadGallery(); } else toast('삭제에 실패했어요.'); }
 
@@ -1065,6 +1086,8 @@ function openAdminPanel(){
     <input type="tel" id="principalPhone" placeholder="연락처" value="${escAttr(principal.phone)}">
     <hr class="dashed"><label class="field">학교 교무실 번호</label>
     <input type="tel" id="schoolPhone" value="${escAttr(school.office)}" style="margin-bottom:8px;">
+    <hr class="dashed"><label class="field">관리자 비밀번호 변경 (선택)</label>
+    <input type="password" id="newPass" placeholder="새 비밀번호">
     <button class="btn gold block" style="margin-top:16px;" onclick="saveAdmin()">저장</button>
     <button class="btn ghost block" style="margin-top:8px;" onclick="confirmReset()">🗑️ 이 기기 기록 초기화</button>
   `);
