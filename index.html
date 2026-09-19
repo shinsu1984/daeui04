@@ -1022,12 +1022,23 @@ async function completePhotoChallenge(id, input){
   }catch(e){ toast('사진을 불러오지 못했어요. 다른 사진으로 시도해주세요.'); if(box) box.textContent='📷 사진을 선택하세요'; }
 }
 function missionRandomHtml(){
-  const current=ui.randomMission;
-  return `<div class="card" style="text-align:center;"><h3>🎲 랜덤 미션 뽑기</h3><p>버튼을 누르면 깜짝 미션이 나타나요! 친구들과 같이 도전해 보세요 🎲</p>
+const current=ui.randomMission;
+  const count=lsGet('random_count_'+todayStr(), 0);
+  return `<div class="card" style="text-align:center;"><h3>🎲 랜덤 미션 뽑기</h3><p>버튼을 누르면 깜짝 미션이 나타나요! <br><span style="color:var(--brass-deep); font-weight:700;">(오늘 ${count}/10회 달성)</span></p>
     ${current?`<div style="margin:16px 0; padding:16px; background:var(--parchment); border-radius:14px;"><div style="font-size:14.5px; font-weight:700;">${escapeHtml(current.title)}</div><div class="tag" style="margin-top:8px;">+${current.points}점</div></div>
       <button class="btn gold block" onclick="completeRandomMission()">완료했어요!</button>`
-      :`<button class="btn gold block" style="margin-top:16px;" onclick="drawRandomMission()">🎲 미션 뽑기!</button>`}
+      :`<button class="btn gold block" style="margin-top:16px;" ${count>=10?'disabled':''} onclick="drawRandomMission()">${count>=10?'오늘 도전 끝! 내일 만나요':'🎲 미션 뽑기!'}</button>`}
   </div>`;
+}
+function drawRandomMission(){ 
+  if(lsGet('random_count_'+todayStr(), 0) >= 10){ toast('하루 10번까지만 가능해요!'); return; }
+  ui.randomMission=RANDOM_MISSIONS[Math.floor(Math.random()*RANDOM_MISSIONS.length)]; renderAll(); 
+}
+function completeRandomMission(){
+  if(!ui.randomMission) return;
+  lsSet('random_count_'+todayStr(), lsGet('random_count_'+todayStr(), 0) + 1);
+  lsSet('random_score', lsGet('random_score',0)+ui.randomMission.points);
+  toast('미션 완료! +'+ui.randomMission.points+'점'); celebrate(); ui.randomMission=null; renderAll(); syncMyScore();
 }
 function drawRandomMission(){ ui.randomMission=RANDOM_MISSIONS[Math.floor(Math.random()*RANDOM_MISSIONS.length)]; renderAll(); }
 function completeRandomMission(){
