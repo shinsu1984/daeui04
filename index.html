@@ -788,10 +788,11 @@ function stampTotalPoints(){ const count=Object.keys(getStamps()).length; return
 function getPhotoChallenges(){ return lsGet('photo_challenges', {}); }
 function sumPhotoScore(){ const d=getPhotoChallenges(); let s=0; PHOTO_CHALLENGES.forEach(c=>{ if(d[c.id]) s+=c.points; }); return s+lsGet('random_score', 0); }
 async function syncMyScore(){
-  const name=getMyName(); if(!name) return;
+const name=getMyName(); if(!name) return;
   const quiz=sumQuizScore(), mission=sumPhotoScore(), stampPts=stampTotalPoints();
-  const total=quiz+mission+stampPts;
-  await submitRanking(name, {name, quizScore:quiz, photoScore:mission, stampScore:stampPts, totalScore:total, updatedAt:Date.now()});
+  const jpPts = jpLearnedCount() * 5; // 일본어 점수 5점씩 합산!
+  const total=quiz+mission+stampPts+jpPts;
+  await submitRanking(name, {name, quizScore:quiz, photoScore:mission, stampScore:stampPts, jpScore:jpPts, totalScore:total, updatedAt:Date.now()});
 }
 
 /* =========================================================================
@@ -1092,9 +1093,10 @@ function speakJapanese(text){
 if(typeof window!=='undefined') primeVoices();
 function speakPhraseAt(ci,ii){ speakJapanese(JAPANESE_PHRASES[ci].items[ii].jp); }
 function toggleJpLearned(ci,ii){
-  const learned=getJpLearned(); const key=jpKey(ci,ii); const wasOn=!!learned[key];
+const learned=getJpLearned(); const key=jpKey(ci,ii); const wasOn=!!learned[key];
   learned[key]=!wasOn; lsSet('jp_learned', learned);
   if(!wasOn) celebrate();
+  syncMyScore(); // 체크할 때마다 점수 갱신!
   renderAll();
 }
 function viewJapanese(){
@@ -1102,12 +1104,12 @@ function viewJapanese(){
   const ci=ui.jpCat||0, cat=JAPANESE_PHRASES[ci];
   let html=`<div class="wrap" style="padding-bottom:4px;">
     <div class="card" style="text-align:center;"><h3 style="justify-content:center;">🇯🇵 여행 일본어 미션</h3>
-      <p>카드를 탭하면 발음을 들려줘요. 다 외운 표현은 체크해보세요!</p>
+      <p>카드를 탭하면 발음을 들려줘요.<br>외운 표현을 체크하면 <b>5점씩 랭킹에 합산</b>돼요!</p>
       <div class="progress" style="margin-top:10px;"><i style="width:${Math.round(done/total*100)}%"></i></div>
-      <p style="margin-top:6px; font-size:12.5px; color:var(--brass-deep); font-weight:700;">${done} / ${total} 표현 외웠어요</p>
+      <p style="margin-top:6px; font-size:12.5px; color:var(--brass-deep); font-weight:700;">${done} / ${total} 표현 외웠어요 (+${done * 5}점)</p>
     </div>
   </div>
-  <div class="jpcat-grid">${JAPANESE_PHRASES.map((c,i)=>`<button class="pill ${ci===i?'active':''}" onclick="ui.jpCat=${i}; renderAll();">${c.icon} ${c.cat}</button>`).join('')}</div>
+  <div class="jpcat-grid">${JAPANESE_PHRASES.map((c,i)=>`<button class="pill ${ci===i?'active':''}" onclick="ui.jpCat=${i}; renderAll();">${c.icon}${c.cat}</button>`).join('')}</div>
   <div class="wrap" style="padding-top:8px;">`;
   html+=cat.items.map((item,ii)=>{
     const on=!!learned[jpKey(ci,ii)];
