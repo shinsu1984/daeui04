@@ -1465,7 +1465,7 @@ function openAdminPanel(){
     <button class="btn ghost block" style="margin-top:8px;" onclick="confirmReset()">🗑️ 이 기기 기록 초기화</button>`);
 }
 function saveAdmin(){
-  const names=[...document.querySelectorAll('.rname')], genders=[...document.querySelectorAll('.rgender')];
+const names=[...document.querySelectorAll('.rname')], genders=[...document.querySelectorAll('.rgender')];
   const roster=names.map((el,i)=>({id:i+1, name:el.value.trim()||('학생'+(i+1)), gender:genders[i].value}));
   lsSet('roster', roster);
   const pairs=getBusPairs().map((_,i)=>({
@@ -1473,10 +1473,20 @@ function saveAdmin(){
     b: (document.querySelector(`.pairSel[data-slot="${i}"][data-side="b"]`)||{}).value || null,
   }));
   lsSet('bus_pairs', pairs);
-  lsSet('teacher', {name:document.getElementById('teacherName').value.trim()||TEACHER_DEFAULT.name, phone:document.getElementById('teacherPhone').value.trim()});
-  lsSet('principal', {name:document.getElementById('principalName').value.trim()||PRINCIPAL_DEFAULT.name, phone:document.getElementById('principalPhone').value.trim()});
-  lsSet('school_contact', {office:document.getElementById('schoolPhone').value.trim()});
+  const teacherInfo = {name:document.getElementById('teacherName').value.trim()||TEACHER_DEFAULT.name, phone:document.getElementById('teacherPhone').value.trim()};
+  lsSet('teacher', teacherInfo);
+  const principalInfo = {name:document.getElementById('principalName').value.trim()||PRINCIPAL_DEFAULT.name, phone:document.getElementById('principalPhone').value.trim()};
+  lsSet('principal', principalInfo);
+  const schoolInfo = {office:document.getElementById('schoolPhone').value.trim()};
+  lsSet('school_contact', schoolInfo);
   const np=document.getElementById('newPass').value.trim(); if(np) lsSet('admin_pass', np);
+
+  if(firebaseReady){
+    db.collection('settings').doc(TRIP.shortName).set({
+      roster: roster, bus_pairs: pairs, teacher: teacherInfo, principal: principalInfo, school_contact: schoolInfo, updatedAt: Date.now()
+    }, {merge:true}).catch(e=>console.warn("설정 전송 실패", e));
+  }
+
   toast('저장했어요!'); closeModal(); renderAll();
 }
 function confirmReset(){ if(confirm('이 기기에 저장된 모든 기록(퀴즈, 스탬프, 사진, 용돈 등)을 초기화할까요?')) resetAllData(); }
@@ -1499,8 +1509,22 @@ window.AI_JUDGE_CONFIG = AI_JUDGE_CONFIG;
 window.FIREBASE_CONFIG_FOR_AI = FIREBASE_CONFIG;
 
 /* ---------- 시작 ---------- */
-function init(){
-  try{ renderAll(); }
+try{
+    if(firebaseReady){
+      db.collection('settings').doc(TRIP.shortName).onSnapshot(snap => {
+        if(snap.exists){
+          const data = snap.data();
+          if(data.roster) lsSet('roster', data.roster);
+          if(data.bus_pairs) lsSet('bus_pairs', data.bus_pairs);
+          if(data.teacher) lsSet('teacher', data.teacher);
+          if(data.principal) lsSet('principal', data.principal);
+          if(data.school_contact) lsSet('school_contact', data.school_contact);
+          renderAll();
+        }
+      });
+    }
+    renderAll();
+  }
   catch(e){ console.error(e); document.getElementById('main').innerHTML='<div class="wrap"><div class="card"><h3>문제가 발생했어요</h3><p>'+escapeHtml(String(e.message||e))+'</p></div></div>'; }
 }
 document.addEventListener('DOMContentLoaded', init);
