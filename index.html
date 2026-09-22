@@ -176,7 +176,10 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
 .pdelete{position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; border:none; background:rgba(20,20,20,.6); color:#fff; font-size:13px; font-weight:700; line-height:1; cursor:pointer; z-index:2; display:flex; align-items:center; justify-content:center;}
 .upload-box{border:1.5px dashed var(--brass); border-radius:var(--radius-sm); padding:22px 10px; text-align:center; color:var(--brass-deep); font-size:13px; font-weight:600; cursor:pointer; background:#faf5e9;}
 .gcard{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); margin-bottom:14px;}
+.gcard-img{width:100%; height:150px; object-fit:cover; display:block; background:var(--line);}
+.gcard-img.ph{display:flex; align-items:center; justify-content:center; font-size:46px; color:#fff; text-shadow:0 1px 8px rgba(0,0,0,.25);}
 .gcard-body{padding:16px;}
+.gcard-body h3{font-family:'Pretendard','Malgun Gothic',sans-serif; font-weight:800; font-size:15.5px;}
 .ranklist{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
 .rankrow{display:flex; align-items:center; gap:12px; padding:13px 16px; border-bottom:1px solid var(--line);}
 .rankrow:last-child{border-bottom:none;}
@@ -313,13 +316,13 @@ const LOCAL_GUIDES = [
 const GUIDE = [
   {name:'동대사 (도다이지)', area:'나라', lat:34.6890, lng:135.8398, icon:'⛩️', points:15, grad:['#c1521f','#f2924a'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/TodaijiDaibutsu0224.jpg?width=800', desc:'나라 시대에 세워진 사찰로, 대불전 안에 있는 거대한 비로자나불(대불)이 유명해요.', tip:'대불전 규모가 크니 시간을 넉넉히 두고 관람하세요.'},
   {name:'나라사슴공원', area:'나라', lat:34.6851, lng:135.8430, icon:'🦌', points:10, grad:['#1f8a63','#4fc98f'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Nara%20Park%2C%20November%202016.jpg?width=800', desc:'천연기념물로 지정된 사슴들이 자유롭게 돌아다니는 공원이에요.', tip:'과자를 든 채로 갑자기 뛰면 사슴이 놀랄 수 있어요.'},
-  {name:'카이유칸 (해유관)', area:'오사카', lat:34.6547, lng:135.4290, icon:'🐳', points:15, grad:['#1565a8','#4fb3e0'], img:'', desc:'세계 최대급 규모의 수족관 중 하나로, 커다란 고래상어가 사는 수조가 인상적이에요.', tip:'나선형 통로를 따라 위에서 아래로 내려가며 관람하는 구조예요.'},
+  {name:'카이유칸 (해유관)', area:'오사카', lat:34.6547, lng:135.4290, icon:'🐳', points:15, grad:['#1565a8','#4fb3e0'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Kaiyukan.JPG?width=800', desc:'세계 최대급 규모의 수족관 중 하나로, 커다란 고래상어가 사는 수조가 인상적이에요.', tip:'나선형 통로를 따라 위에서 아래로 내려가며 관람하는 구조예요.'},
   {name:'청수사 (기요미즈데라)', area:'교토', lat:34.9949, lng:135.7850, icon:'🏯', points:20, grad:['#9c3b2e','#d9694a'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Kiyomizu-dera%2C%20Kyoto%2C%20November%202016%20-01.jpg?width=800', desc:'못을 하나도 쓰지 않고 나무를 짜맞춰 지은 건축 기법(가케즈쿠리)으로 유명한 절이에요.', tip:'가파른 돌길이 많으니 편한 운동화는 필수!'},
-  {name:'윤동주 시비 (도시샤대학)', area:'교토', lat:35.0313, lng:135.7601, icon:'📜', points:15, grad:['#2c3163','#4d5591'], img:'', desc:'일제강점기 청년 시인 윤동주가 유학했던 도시샤대학 교정에 그를 기리는 시비가 세워져 있어요.', tip:'시비 앞에서는 조용히, 차분한 마음으로 시를 함께 읽어보는 시간을 가져보세요.'},
+  {name:'윤동주 시비 (도시샤대학)', area:'교토', lat:35.0313, lng:135.7601, icon:'📜', points:15, grad:['#2c3163','#4d5591'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Yun_Dong-ju.jpg?width=800', desc:'일제강점기 청년 시인 윤동주가 유학했던 도시샤대학 교정에 그를 기리는 시비가 세워져 있어요.', tip:'시비 앞에서는 조용히, 차분한 마음으로 시를 함께 읽어보는 시간을 가져보세요.'},
   {name:'도톤보리 · 신사이바시', area:'오사카', lat:34.6687, lng:135.5013, icon:'🌆', points:10, grad:['#7a1f6e','#c23fa0'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Dotonbori%2C%20Osaka%2C%20at%20night%2C%20November%202016.jpg?width=800', desc:'운하를 따라 늘어선 오사카 대표 번화가예요.', tip:'사람이 많은 곳이니 모둠 친구들과 꼭 함께 다니세요.'},
-  {name:'유니버설 스튜디오 재팬', area:'오사카', lat:34.6654, lng:135.4323, icon:'🎢', points:20, grad:['#4b2196','#8452e0'], img:'', desc:'영화 · 애니메이션을 테마로 한 놀이공원이에요.', tip:'집합 시간을 꼭 지키고, 놀이기구 탑승 전 안전 수칙 안내를 잘 들어요.'},
+  {name:'유니버설 스튜디오 재팬', area:'오사카', lat:34.6654, lng:135.4323, icon:'🎢', points:20, grad:['#4b2196','#8452e0'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Universal_Studios_Japan_entrance.jpg?width=800', desc:'영화 · 애니메이션을 테마로 한 놀이공원이에요.', tip:'집합 시간을 꼭 지키고, 놀이기구 탑승 전 안전 수칙 안내를 잘 들어요.'},
   {name:'오사카성', area:'오사카', lat:34.6873, lng:135.5259, icon:'🏰', points:15, grad:['#8a5a12','#e2a83c'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Osaka%20Castle%2002bs3200.jpg?width=800', desc:'일본 3대 성 중 하나로 꼽히는 성이에요.', tip:'성 주변 공원이 넓으니 단체 이동 시 흩어지지 않도록 주의하세요.'},
-  {name:'롯코산 케이블카 · 가든테라스', area:'고베', lat:34.7514, lng:135.2394, icon:'🚡', points:15, grad:['#1c5a8a','#4ea8c9'], img:'', desc:'케이블카를 타고 롯코산 정상까지 올라가면 고베 시내와 바다가 한눈에 내려다보이는 멋진 전망대가 있어요.', tip:'산 위는 바람이 세고 쌀쌀할 수 있으니 얇은 겉옷을 챙기면 좋아요.'},
+  {name:'롯코산 케이블카 · 가든테라스', area:'고베', lat:34.7514, lng:135.2394, icon:'🚡', points:15, grad:['#1c5a8a','#4ea8c9'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Rokko-Shidare_Observatory_from_Miharashi_Tower_in_Rokko_Garden_Terrace.JPG?width=800', desc:'케이블카를 타고 롯코산 정상까지 올라가면 고베 시내와 바다가 한눈에 내려다보이는 멋진 전망대가 있어요.', tip:'산 위는 바람이 세고 쌀쌀할 수 있으니 얇은 겉옷을 챙기면 좋아요.'},
   {name:'고베 하버랜드 · 메리켄파크', area:'고베', lat:34.6828, lng:135.1862, icon:'⚓', points:15, grad:['#0f6e7a','#38b8c2'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Kobe%20Port%20Tower%202015-07.jpg?width=800', desc:'옛 항구 지역을 재개발한 곳으로, 바다를 배경으로 한 풍경이 아름다워요.', tip:'바닷바람이 부니 얇은 겉옷을 챙기면 좋아요.'},
 ];
 const STAMP_BONUS_TIERS = [ {count:5, bonus:20}, {count:7, bonus:50}, {count:10, bonus:100} ];
@@ -875,6 +878,71 @@ function speakJapanese(text){
 }
 if(typeof window!=='undefined' && window.speechSynthesis){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=()=>{ __jaVoiceCache=null; }; }
 function speakPhraseAt(ci,ii){ speakJapanese(JAPANESE_PHRASES[ci].items[ii].jp); }
+
+/* ---------- 실시간 번역기 (한국어 → 일본어) ----------
+   키가 필요 없는 무료 번역 API를 순서대로 시도해요. 구글 쪽이 막히거나 실패하면
+   마이메모리로 자동 전환하니, 관리자가 따로 설정할 게 없어요. */
+async function translateKoToJa(text){
+  try{
+    const res=await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=ja&dt=t&q=${encodeURIComponent(text)}`);
+    if(res.ok){
+      const data=await res.json();
+      const translated=(data[0]||[]).map(seg=>seg[0]).join('');
+      if(translated) return {ok:true, text:translated};
+    }
+  }catch(e){}
+  try{
+    const res=await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|ja`);
+    if(res.ok){
+      const data=await res.json();
+      const translated=data && data.responseData && data.responseData.translatedText;
+      if(translated && !/^(PLEASE SELECT|INVALID)/i.test(translated)) return {ok:true, text:translated};
+    }
+  }catch(e){}
+  return {ok:false};
+}
+let __lastTranslation='';
+async function runTranslate(){
+  const input=document.getElementById('translateInput');
+  const box=document.getElementById('translateResult');
+  const text=input.value.trim();
+  if(!text){ toast('먼저 한글로 문장을 입력해주세요.'); return; }
+  box.innerHTML=`<div class="banner info" style="margin-top:10px;">🔄 번역 중이에요...</div>`;
+  const result=await translateKoToJa(text);
+  if(!result.ok){
+    box.innerHTML=`<div class="banner" style="margin-top:10px;">⚠️ 번역에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.</div>`;
+    return;
+  }
+  __lastTranslation=result.text;
+  box.innerHTML=`<div class="jpcard on" style="margin-top:10px; cursor:pointer;" onclick="speakJapanese(__lastTranslation)">
+    <div class="jpcard-main">
+      <div class="jpjp">${escapeHtml(result.text)} <span class="jpspk">🔊</span></div>
+      <div class="jpkr">${escapeHtml(text)}</div>
+    </div>
+  </div>`;
+  speakJapanese(result.text);
+}
+let __recognizer=null;
+function startVoiceInput(){
+  const SR=window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast('이 기기에서는 음성 입력을 지원하지 않아요. 타이핑해주세요.'); return; }
+  const btn=document.getElementById('micBtn');
+  try{
+    __recognizer=new SR();
+    __recognizer.lang='ko-KR'; __recognizer.interimResults=false; __recognizer.maxAlternatives=1;
+    if(btn){ btn.textContent='🎤 듣고 있어요...'; btn.disabled=true; }
+    __recognizer.onresult=(e)=>{
+      const said=e.results[0][0].transcript;
+      const input=document.getElementById('translateInput');
+      if(input) input.value=said;
+      runTranslate();
+    };
+    __recognizer.onerror=()=>{ toast('음성을 알아듣지 못했어요. 다시 시도해주세요.'); };
+    __recognizer.onend=()=>{ if(btn){ btn.textContent='🎤 말하기'; btn.disabled=false; } };
+    __recognizer.start();
+  }catch(e){ toast('음성 입력을 시작할 수 없어요.'); if(btn){ btn.textContent='🎤 말하기'; btn.disabled=false; } }
+}
+
 function toggleJpLearned(ci,ii){
   const learned=getJpLearned(); const key=jpKey(ci,ii); const wasOn=!!learned[key];
   learned[key]=!wasOn; lsSet('jp_learned', learned);
@@ -885,7 +953,18 @@ function toggleJpLearned(ci,ii){
 function viewJapanese(){
   const learned=getJpLearned(), total=jpAllCount(), done=jpLearnedCount();
   const ci=ui.jpCat||0, cat=JAPANESE_PHRASES[ci];
+  const micSupported=!!(window.SpeechRecognition || window.webkitSpeechRecognition);
   let html=`<div class="wrap" style="padding-bottom:4px;">
+    <div class="card"><h3>🗣️ 실시간 번역기</h3>
+      <p>하고 싶은 말을 한글로 써보세요. 일본어로 바꿔주고 소리도 들려줘요!</p>
+      <textarea id="translateInput" maxlength="200" rows="2" placeholder="예: 화장실이 어디예요?" style="margin-top:8px;"></textarea>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        ${micSupported?`<button class="btn ghost sm" id="micBtn" onclick="startVoiceInput()">🎤 말하기</button>`:''}
+        <button class="btn gold sm" style="flex:1;" onclick="runTranslate()">🇯🇵 번역하기</button>
+      </div>
+      <div id="translateResult"></div>
+      ${!micSupported?`<p style="font-size:11px; color:var(--ink-faint); margin-top:6px;">이 기기에서는 음성 입력이 지원되지 않아요. 타이핑해서 사용해주세요.</p>`:''}
+    </div>
     <div class="card" style="text-align:center;"><h3 style="justify-content:center;">🇯🇵 여행 일본어 미션</h3>
       <p>카드를 탭하면 발음을 들려줘요.<br>외운 표현을 체크하면 <b>5점씩 랭킹에 합산</b>돼요!</p>
       <div class="progress" style="margin-top:10px;"><i style="width:${Math.round(done/total*100)}%"></i></div>
@@ -1120,10 +1199,12 @@ function infoSeats(){
   return html;
 }
 
+function guideImgError(el, icon, c1, c2){ el.outerHTML = `<div class="gcard-img ph" style="background:linear-gradient(135deg,${c1},${c2})">${icon}</div>`; }
 function infoGuide(){
   let html=`<div class="section-title">📍 우리가 가는 곳 (스탬프 랠리)</div>`;
   html+=GUIDE.map(g=>{ const mapUrl='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(g.name+' '+g.area+' Japan');
-    return `<div class="gcard"><div class="gcard-body"><div class="row-between"><h3 style="margin:0; display:flex; align-items:center; gap:7px;"><span style="font-size:19px;">${g.icon}</span>${g.name}</h3><span class="tag">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><div class="banner" style="margin-top:10px;">💡 ${g.tip}</div><a class="btn ghost block sm" style="display:block; text-align:center; text-decoration:none;" href="${mapUrl}" target="_blank" rel="noopener">🗺️ 구글 지도에서 보기</a></div></div>`; }).join('');
+    const media=g.img?`<img class="gcard-img" src="${g.img}" alt="${g.name}" loading="lazy" onerror="guideImgError(this,'${g.icon}','${g.grad[0]}','${g.grad[1]}')">`:`<div class="gcard-img ph" style="background:linear-gradient(135deg,${g.grad[0]},${g.grad[1]})">${g.icon}</div>`;
+    return `<div class="gcard">${media}<div class="gcard-body"><div class="row-between"><h3 style="margin:0; display:flex; align-items:center; gap:7px;"><span style="font-size:19px;">${g.icon}</span>${g.name}</h3><span class="tag">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><div class="banner" style="margin-top:10px;">💡 ${g.tip}</div><a class="btn ghost block sm" style="display:block; text-align:center; text-decoration:none;" href="${mapUrl}" target="_blank" rel="noopener">🗺️ 구글 지도에서 보기</a></div></div>`; }).join('');
   html+=`<div class="section-title" style="margin-top:6px;">💡 알아두면 좋아요</div><p style="font-size:12px; color:var(--ink-soft); margin:-4px 0 12px;">방문 일정에는 없지만, 여행 중 필요할 때 찾아두면 도움이 되는 장소들이에요. 우리가 실제로 가는 도시 근처를 기준으로 찾아줘요.</p>`;
   html+=USEFUL_SPOTS.map(g=>{
     const kw=g.name.replace(/\s*\(.*?\)\s*/g,'');
