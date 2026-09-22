@@ -251,7 +251,7 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
    그래서 GitHub에 새 버전을 올려도 아이콘으로 열면 계속 예전 내용이 보일 수 있어요.
    화면이 다시 보일 때마다(홈 화면 아이콘으로 다시 열 때 포함) 서버의 최신 파일을
    캐시 없이 확인해서, 버전이 다르면 자동으로 새로고침해요. */
-const APP_BUILD = '2026-09-22-07';
+const APP_BUILD = '2026-09-22-09';
 let __updateChecking = false;
 async function checkForUpdate(){
   if(__updateChecking) return;
@@ -356,6 +356,21 @@ const GUIDE = [
   {name:'고베 하버랜드 · 메리켄파크', area:'고베', lat:34.6828, lng:135.1862, icon:'⚓', points:15, grad:['#0f6e7a','#38b8c2'], img:'https://commons.wikimedia.org/wiki/Special:FilePath/Kobe%20Port%20Tower%202015-07.jpg?width=800', desc:'옛 항구 지역을 재개발한 곳으로, 바다를 배경으로 한 풍경이 아름다워요.', tip:'바닷바람이 부니 얇은 겉옷을 챙기면 좋아요.'},
 ];
 const STAMP_BONUS_TIERS = [ {count:5, bonus:20}, {count:7, bonus:50}, {count:10, bonus:100} ];
+
+/* 사전연습 탭 "우리 동네 스탬프" — 학교 근처 실제 공공시설(면사무소·우체국·농협·파출소 등)에서
+   여행 전에 GPS 스탬프 사용법을 미리 연습해보는 용도예요. 실제 여행지 스탬프(GUIDE)와는 완전히
+   별개의 목록·저장키(prestamps)를 써요. ⚠️ 정확한 건물 좌표는 지도 API 없이 확인이 어려워
+   학교 주소를 기준으로 추정한 좌표를 사용했어요 — 실제로 그 자리에 한 번 가보시고 앱이 반응하지
+   않으면 좌표를 알려주시면 정확하게 고쳐드릴게요. 반경(PRE_STAMP_RADIUS)을 넉넉하게 잡아둔 것도
+   그 이유예요. */
+const PRE_STAMP_RADIUS = 300; // 미터
+const PRE_STAMPS = [
+  {name:'대의면사무소', icon:'🏛️', lat:35.3995, lng:128.3220, points:10, desc:'우리 마을의 여러 행정업무를 처리하는 곳이에요.'},
+  {name:'대의우체국', icon:'📮', lat:35.3980, lng:128.3235, points:10, desc:'편지와 택배를 보내고 받는 곳이에요.'},
+  {name:'대의농협', icon:'🏦', lat:35.3965, lng:128.3220, points:10, desc:'마을 어른들이 자주 오가시는 곳이에요.'},
+  {name:'대의파출소', icon:'🚓', lat:35.3980, lng:128.3205, points:10, desc:'우리 동네를 지켜주는 경찰관들이 계신 곳이에요.'},
+  {name:'대의보건지소', icon:'🏥', lat:35.3987, lng:128.3227, points:10, desc:'다치거나 아플 때 도움을 받을 수 있는 곳이에요.'},
+];
 
 /* '알아두면 좋아요' 근처 검색용 — 실제로 우리가 방문하는 도시의 대표 지점 좌표.
    예전에는 무조건 '오사카'만 붙여서 검색했는데, 그러면 나라·교토·고베에서
@@ -646,7 +661,7 @@ function photoUploadCount(){ return getMyPhotos().length + lsGet('shared_photo_c
 function photoUploadScore(){ return photoUploadCount() * 2; }
 async function syncMyScore(){
   const name=getMyName(); if(!name) return;
-  const quiz=sumQuizScore(), challengeScore=sumPhotoScore(), stampPts=stampTotalPoints();
+  const quiz=sumQuizScore(), challengeScore=sumPhotoScore(), stampPts=stampTotalPoints()+preStampPointsEarned();
   const jpPts = jpLearnedCount() * 5; // 일본어 5점 합산
   const uploadPts = photoUploadScore(); // 사진 업로드 2점씩
   let photoScore = challengeScore + uploadPts; // 포토랭킹은 포토챌린지+업로드 합산
@@ -795,14 +810,39 @@ function tryStamp(){
   navigator.geolocation.getCurrentPosition(pos=>{
     const {latitude,longitude,accuracy}=pos.coords; let nearest=null, nd=Infinity;
     GUIDE.forEach(g=>{ const dist=haversine(latitude,longitude,g.lat,g.lng); if(dist<nd){ nd=dist; nearest=g; } });
+    let msg='';
     if(nearest && nd<=800){
       const stamps=getStamps();
       if(!stamps[nearest.name]){ stamps[nearest.name]=Date.now(); lsSet('stamps',stamps); toast('🎉 '+nearest.name+' 도장 획득! +'+nearest.points+'점'); celebrate(); syncMyScore(); }
       else toast('이미 도장을 받은 곳이에요.');
-      status.textContent=`${nearest.name}까지 약 ${Math.round(nd)}m · GPS 정확도 ±${Math.round(accuracy)}m`;
-    } else if(nearest){ status.textContent=`가장 가까운 곳: ${nearest.name} (약 ${(Math.round(nd/100)/10)}km) — 800m 이내로 이동해보세요.`; }
+      msg=`${nearest.name}까지 약 ${Math.round(nd)}m · GPS 정확도 ±${Math.round(accuracy)}m`;
+    } else if(nearest){ msg=`가장 가까운 곳: ${nearest.name} (약 ${(Math.round(nd/100)/10)}km) — 800m 이내로 이동해보세요.`; }
+    // renderAll()이 미션 화면을 다시 그리면서 #gpsStatus 노드 자체가 새로 만들어지므로,
+    // 렌더링이 끝난 뒤 새 노드를 다시 찾아서 메시지를 넣어야 화면에 실제로 보임.
     renderAll();
-  }, ()=>{ status.textContent='위치 정보를 가져올 수 없어요. 위치 권한을 확인해주세요.'; }, {enableHighAccuracy:true, timeout:10000});
+    const status2=document.getElementById('gpsStatus'); if(status2) status2.textContent=msg;
+  }, ()=>{ const s=document.getElementById('gpsStatus'); if(s) s.textContent='위치 정보를 가져올 수 없어요. 위치 권한을 확인해주세요.'; }, {enableHighAccuracy:true, timeout:10000});
+}
+/* ---------- 사전연습 "우리 동네 스탬프" (여행지 스탬프 랠리와 완전히 별개) ---------- */
+function getPreStamps(){ return lsGet('prestamps', {}); }
+function preStampPointsEarned(){ const st=getPreStamps(); return PRE_STAMPS.reduce((s,g)=> s+(st[g.name]? g.points:0), 0); }
+function tryPreStamp(){
+  const status=document.getElementById('preGpsStatus');
+  if(!navigator.geolocation){ status.textContent='이 기기에서는 위치 확인을 지원하지 않아요.'; return; }
+  status.textContent='위치 확인 중...';
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const {latitude,longitude,accuracy}=pos.coords; let nearest=null, nd=Infinity;
+    PRE_STAMPS.forEach(g=>{ const dist=haversine(latitude,longitude,g.lat,g.lng); if(dist<nd){ nd=dist; nearest=g; } });
+    let msg='';
+    if(nearest && nd<=PRE_STAMP_RADIUS){
+      const st=getPreStamps();
+      if(!st[nearest.name]){ st[nearest.name]=Date.now(); lsSet('prestamps',st); toast('🎉 '+nearest.name+' 스탬프 획득! +'+nearest.points+'점'); celebrate(); syncMyScore(); }
+      else toast('이미 스탬프를 받은 곳이에요.');
+      msg=`${nearest.name}까지 약 ${Math.round(nd)}m · GPS 정확도 ±${Math.round(accuracy)}m`;
+    } else if(nearest){ msg=`가장 가까운 곳: ${nearest.name} (약 ${(Math.round(nd/100)/10)}km) — ${PRE_STAMP_RADIUS}m 이내로 이동해보세요.`; }
+    renderAll();
+    const status2=document.getElementById('preGpsStatus'); if(status2) status2.textContent=msg;
+  }, ()=>{ const s=document.getElementById('preGpsStatus'); if(s) s.textContent='위치 정보를 가져올 수 없어요. 위치 권한을 확인해주세요.'; }, {enableHighAccuracy:true, timeout:10000});
 }
 function missionPhotoHtml(){
   const done=getPhotoChallenges(), tripChallenges=PHOTO_CHALLENGES.filter(c=>!c.pre);
@@ -835,6 +875,7 @@ function viewPre(){
   const done=getPhotoChallenges();
   const doneQ=preQuizzes.filter(set=>quizSetProgress(set).done===quizSetProgress(set).total).length;
   const donePh=prePhotos.filter(c=>done[c.id]).length;
+  const preStamps=getPreStamps(), donePs=Object.keys(preStamps).length;
   let html=`<div class="wrap">
     <div class="banner info">📚 <b>여행 전 사전학습</b> · 교실에서 미리 해보면서 일본 여행도 준비하고, 앱 사용법도 익혀봐요! 여기서 얻는 점수도 랭킹에 그대로 합산돼요.</div>
     <div class="stats" style="grid-template-columns:repeat(3,1fr);">
@@ -854,7 +895,16 @@ function viewPre(){
       ${d?`<img src="${d.img}" style="width:100%; border-radius:12px; margin-top:10px; border:1px solid var(--line);"><p style="color:var(--good); font-weight:700; margin-top:6px;">✅ 완료했어요!</p>`
         :`<label class="upload-box" style="display:block; margin-top:10px;" id="upl-${c.id}">📷 사진을 선택하세요<input type="file" accept="image/*" capture="environment" style="display:none" onchange="completePhotoChallenge('${c.id}', this)"></label>`}</div>`;
   });
-  html+=`<div class="section-title" style="margin-top:16px;">🇯🇵 일본어 표현 익히기</div>
+  html+=`<div class="section-title" style="margin-top:16px;">🏅 우리 동네 스탬프</div>
+    <div class="card"><h3>🚩 학교 근처 스탬프 미리 연습</h3>
+      <div class="stats" style="grid-template-columns:repeat(3,1fr); margin-top:10px;"><div class="stat"><b>${donePs}</b><span>획득</span></div><div class="stat"><b>${PRE_STAMPS.length}</b><span>전체</span></div><div class="stat"><b>${preStampPointsEarned()}</b><span>스탬프 점수</span></div></div>
+      <p style="margin-top:10px;">우리 학교 근처 장소에 가면 GPS로 스탬프가 찍혀요 (약 ${PRE_STAMP_RADIUS}m 이내). 일본에서 쓸 스탬프 랠리를 미리 연습해봐요!</p>
+      <button class="btn gold block" style="margin-top:10px;" onclick="tryPreStamp()">📍 지금 위치로 스탬프 받기</button>
+      <div id="preGpsStatus" style="font-size:12px; color:var(--ink-soft); margin-top:8px;"></div>
+      ${donePs===PRE_STAMPS.length?`<div class="banner" style="margin-top:10px;">🎉 우리 동네 스탬프를 다 모았어요!</div>`:''}
+    </div>
+    <div class="pgrid2">${PRE_STAMPS.map(g=>{ const on=!!preStamps[g.name]; return `<div class="stampcard ${on?'on':''}"><div class="stampicon">${g.icon}</div><div class="stampname">${g.name}</div><div class="stamppts">${on?'✓ 획득':'+'+g.points+'점'}</div></div>`; }).join('')}</div>
+    <div class="section-title" style="margin-top:16px;">🇯🇵 일본어 표현 익히기</div>
     <div class="card"><p>여행에서 바로 쓸 수 있는 인사말과 표현을 미리 외워두면 훨씬 든든해요! 배운 표현마다 점수가 쌓여요.</p><button class="btn gold block" style="margin-top:10px;" onclick="ui.tab='jp'; renderAll();">일본어 탭으로 이동 →</button></div>
     <div class="section-title" style="margin-top:16px;">🏆 랭킹 미리보기</div>
     <div class="card"><p>사전학습 점수도 전체 랭킹 · 포토랭킹에 그대로 합산돼요. 지금부터 친구들과 함께 준비해봐요!</p><button class="btn ghost block" style="margin-top:10px;" onclick="ui.tab='rank'; renderAll();">랭킹 탭으로 이동 →</button></div>
