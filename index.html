@@ -179,7 +179,7 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
 .gcard-img{width:100%; height:150px; object-fit:cover; display:block; background:var(--line);}
 .gcard-img.ph{display:flex; align-items:center; justify-content:center; font-size:46px; color:#fff; text-shadow:0 1px 8px rgba(0,0,0,.25);}
 .gcard-body{padding:16px;}
-.gcard-body h3{font-family:'Pretendard','Malgun Gothic',sans-serif; font-weight:800; font-size:15.5px;}
+.gcard-body h3{font-family:'Pretendard','Malgun Gothic',sans-serif; font-weight:700; font-size:14.5px;}
 .ranklist{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
 .rankrow{display:flex; align-items:center; gap:12px; padding:13px 16px; border-bottom:1px solid var(--line);}
 .rankrow:last-child{border-bottom:none;}
@@ -239,6 +239,30 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
 <div id="modalRoot"></div>
 
 <script>
+/* ---------- 자동 업데이트 감지 ----------
+   아이폰 "홈 화면에 추가"로 설치한 앱은 사파리 탭과 달리 새로고침 없이 예전 화면을
+   그대로 보여주는 경우가 많아요(백그라운드에서 꺼지지 않고 멈춰있다가 그대로 다시 뜸).
+   그래서 GitHub에 새 버전을 올려도 아이콘으로 열면 계속 예전 내용이 보일 수 있어요.
+   화면이 다시 보일 때마다(홈 화면 아이콘으로 다시 열 때 포함) 서버의 최신 파일을
+   캐시 없이 확인해서, 버전이 다르면 자동으로 새로고침해요. */
+const APP_BUILD = '2026-09-22-02';
+let __updateChecking = false;
+async function checkForUpdate(){
+  if(__updateChecking) return;
+  __updateChecking = true;
+  try{
+    const res = await fetch(location.pathname + '?_=' + Date.now(), {cache:'no-store'});
+    if(res.ok){
+      const text = await res.text();
+      const m = text.match(/const APP_BUILD = '([^']+)'/);
+      if(m && m[1] && m[1] !== APP_BUILD) location.reload();
+    }
+  }catch(e){}
+  __updateChecking = false;
+}
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') checkForUpdate(); });
+window.addEventListener('pageshow', checkForUpdate);
+
 /* 설정 데이터 */
 const TRIP = {
   schoolName: '대의초등학교', shortName: '대의초', emoji: '🎒', title: '대의초등학교 국외 수학여행', subtitle: '6학년 · 일본 오사카·나라·교토·고베',
