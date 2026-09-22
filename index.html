@@ -179,7 +179,8 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
 .gcard-img{width:100%; height:150px; object-fit:cover; display:block; background:var(--line);}
 .gcard-img.ph{display:flex; align-items:center; justify-content:center; font-size:46px; color:#fff; text-shadow:0 1px 8px rgba(0,0,0,.25);}
 .gcard-body{padding:16px;}
-.gcard-body h3{font-family:'Pretendard','Malgun Gothic',sans-serif; font-weight:600; font-size:13.5px;}
+.gcard-body h3{font-size:15.5px;}
+.gcard-body p{margin:0; color:var(--ink-soft); font-size:13.5px; line-height:1.6;}
 .ranklist{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
 .rankrow{display:flex; align-items:center; gap:12px; padding:13px 16px; border-bottom:1px solid var(--line);}
 .rankrow:last-child{border-bottom:none;}
@@ -245,7 +246,7 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
    그래서 GitHub에 새 버전을 올려도 아이콘으로 열면 계속 예전 내용이 보일 수 있어요.
    화면이 다시 보일 때마다(홈 화면 아이콘으로 다시 열 때 포함) 서버의 최신 파일을
    캐시 없이 확인해서, 버전이 다르면 자동으로 새로고침해요. */
-const APP_BUILD = '2026-09-22-03';
+const APP_BUILD = '2026-09-22-04';
 let __updateChecking = false;
 async function checkForUpdate(){
   if(__updateChecking) return;
@@ -1228,7 +1229,7 @@ function infoGuide(){
   let html=`<div class="section-title">📍 우리가 가는 곳 (스탬프 랠리)</div>`;
   html+=GUIDE.map(g=>{ const mapUrl='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(g.name+' '+g.area+' Japan');
     const media=g.img?`<img class="gcard-img" src="${g.img}" alt="${g.name}" loading="lazy" onerror="guideImgError(this,'${g.icon}','${g.grad[0]}','${g.grad[1]}')">`:`<div class="gcard-img ph" style="background:linear-gradient(135deg,${g.grad[0]},${g.grad[1]})">${g.icon}</div>`;
-    return `<div class="gcard">${media}<div class="gcard-body"><div class="row-between"><h3 style="margin:0; display:flex; align-items:center; gap:7px;"><span style="font-size:19px;">${g.icon}</span>${g.name}</h3><span class="tag">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><div class="banner" style="margin-top:10px;">💡 ${g.tip}</div><a class="btn ghost block sm" style="display:block; text-align:center; text-decoration:none;" href="${mapUrl}" target="_blank" rel="noopener">🗺️ 구글 지도에서 보기</a></div></div>`; }).join('');
+    return `<div class="gcard">${media}<div class="gcard-body"><div class="row-between"><h3 style="margin:0; display:flex; align-items:center; gap:7px;">${g.icon} ${g.name}</h3><span class="tag">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><div class="banner" style="margin-top:10px;">💡 ${g.tip}</div><a class="btn ghost block sm" style="display:block; text-align:center; text-decoration:none;" href="${mapUrl}" target="_blank" rel="noopener">🗺️ 구글 지도에서 보기</a></div></div>`; }).join('');
   html+=`<div class="section-title" style="margin-top:6px;">💡 알아두면 좋아요</div><p style="font-size:12px; color:var(--ink-soft); margin:-4px 0 12px;">방문 일정에는 없지만, 여행 중 필요할 때 찾아두면 도움이 되는 장소들이에요. 우리가 실제로 가는 도시 근처를 기준으로 찾아줘요.</p>`;
   html+=USEFUL_SPOTS.map(g=>{
     const kw=g.name.replace(/\s*\(.*?\)\s*/g,'');
@@ -1236,7 +1237,7 @@ function infoGuide(){
       const mapUrl='https://www.google.com/maps/search/'+encodeURIComponent(kw)+'/@'+c.lat+','+c.lng+',16z';
       return `<a class="btn ghost sm" style="flex:1; text-align:center; text-decoration:none; padding:8px 4px;" href="${mapUrl}" target="_blank" rel="noopener">${city}</a>`;
     }).join('');
-    return `<div class="gcard"><div class="gcard-body"><div class="row-between"><h3 style="margin:0; display:flex; align-items:center; gap:7px;"><span style="font-size:19px;">${g.icon}</span>${g.name}</h3><span class="tag blue">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><p style="font-size:11px; color:var(--ink-faint); margin:8px 0 5px;">🗺️ 우리가 가는 곳 근처에서 찾기</p><div style="display:flex; gap:6px;">${cityBtns}</div></div></div>`; }).join('');
+    return `<div class="gcard"><div class="gcard-body"><div class="row-between"><h3 style="margin:0; display:flex; align-items:center; gap:7px;">${g.icon} ${g.name}</h3><span class="tag blue">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><p style="font-size:11px; color:var(--ink-faint); margin:8px 0 5px;">🗺️ 우리가 가는 곳 근처에서 찾기</p><div style="display:flex; gap:6px;">${cityBtns}</div></div></div>`; }).join('');
   return html;
 }
 function infoSafety(){ const sec=(title,list)=>`<div class="card"><h3>${title}</h3>${list.map((r,i)=>`<div style="display:flex; gap:10px; padding:8px 0; ${i?'border-top:1px solid var(--line);':''}"><span style="color:var(--brass-deep); font-weight:700;">${i+1}</span><span style="font-size:13.5px;">${r}</span></div>`).join('')}</div>`; return sec('🛡️ 안전 수칙', SAFETY_RULES)+sec('📱 휴대폰 사용', PHONE_RULES)+sec('💴 용돈 · 결제', MONEY_RULES)+sec('🏨 호텔 매너 7가지', HOTEL_MANNERS)+sec('🌏 해외여행 특별 수칙', OVERSEAS_RULES); }
