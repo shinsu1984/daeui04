@@ -246,7 +246,7 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
    그래서 GitHub에 새 버전을 올려도 아이콘으로 열면 계속 예전 내용이 보일 수 있어요.
    화면이 다시 보일 때마다(홈 화면 아이콘으로 다시 열 때 포함) 서버의 최신 파일을
    캐시 없이 확인해서, 버전이 다르면 자동으로 새로고침해요. */
-const APP_BUILD = '2026-09-22-04';
+const APP_BUILD = '2026-09-22-05';
 let __updateChecking = false;
 async function checkForUpdate(){
   if(__updateChecking) return;
@@ -904,12 +904,15 @@ function speakJapanese(text){
 if(typeof window!=='undefined' && window.speechSynthesis){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=()=>{ __jaVoiceCache=null; }; }
 function speakPhraseAt(ci,ii){ speakJapanese(JAPANESE_PHRASES[ci].items[ii].jp); }
 
-/* ---------- 실시간 번역기 (한국어 → 일본어) ----------
+/* ---------- 실시간 번역기 (한국어 ↔ 일본어) ----------
    키가 필요 없는 무료 번역 API를 순서대로 시도해요. 구글 쪽이 막히거나 실패하면
-   마이메모리로 자동 전환하니, 관리자가 따로 설정할 게 없어요. */
-async function translateKoToJa(text){
+   마이메모리로 자동 전환하니, 관리자가 따로 설정할 게 없어요.
+   기본은 "한국어→일본어"예요. 🔄 배지를 누르면 상대방이 일본어로 한 말을
+   들려줄 수 있게 "일본어→한국어"로 한 번 바뀌고, 그 번역이 끝나면 다음 문장을
+   또 입력할 수 있도록 자동으로 다시 "한국어→일본어"로 돌아가요. */
+async function translateText(text, sl, tl){
   try{
-    const res=await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=ko&tl=ja&dt=t&q=${encodeURIComponent(text)}`);
+    const res=await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`);
     if(res.ok){
       const data=await res.json();
       const translated=(data[0]||[]).map(seg=>seg[0]).join('');
@@ -917,7 +920,7 @@ async function translateKoToJa(text){
     }
   }catch(e){}
   try{
-    const res=await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|ja`);
+    const res=await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sl}|${tl}`);
     if(res.ok){
       const data=await res.json();
       const translated=data && data.responseData && data.responseData.translatedText;
@@ -926,35 +929,77 @@ async function translateKoToJa(text){
   }catch(e){}
   return {ok:false};
 }
+function speakKorean(text){
+  try{
+    if(!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(text); u.lang='ko-KR'; u.rate=0.98;
+    window.speechSynthesis.speak(u);
+  }catch(e){ toast('음성 재생에 실패했어요.'); }
+}
+/* 배지 문구·입력창 안내·마이크 버튼 문구를 지금 방향(ui.translateDir)에 맞게 갈아끼움.
+   결과 카드(translateResult)는 건드리지 않아서, 번역 직후 자동으로 방향을 되돌려도
+   방금 본 번역 결과는 화면에 그대로 남아있어요. */
+function applyTranslateDirUI(){
+  const ja2ko = ui.translateDir==='ja2ko';
+  const label=document.getElementById('dirToggleLabel');
+  if(label) label.textContent = ja2ko ? '🇯🇵 일본어 → 🇰🇷 한국어' : '🇰🇷 한국어 → 🇯🇵 일본어';
+  const hint=document.getElementById('translateHint');
+  if(hint) hint.textContent = ja2ko
+    ? '상대방이 일본어로 말한 걸 마이크로 들려주세요. 한국어로 알려드려요!'
+    : '하고 싶은 말을 한글로 써보세요. 일본어로 바꿔주고 소리도 들려줘요!';
+  const input=document.getElementById('translateInput');
+  if(input) input.placeholder = ja2ko ? '🎤 버튼을 눌러 일본어를 들려주세요' : '예: 화장실이 어디예요?';
+  const mic=document.getElementById('micBtn');
+  if(mic && !mic.disabled) mic.textContent = ja2ko ? '🎤 일본어 듣기' : '🎤 한국어로 말하기';
+}
+function toggleTranslateDir(){
+  ui.translateDir = (ui.translateDir==='ja2ko') ? 'ko2ja' : 'ja2ko';
+  const box=document.getElementById('translateResult'); if(box) box.innerHTML='';
+  const input=document.getElementById('translateInput'); if(input) input.value='';
+  applyTranslateDirUI();
+}
 let __lastTranslation='';
 async function runTranslate(){
   const input=document.getElementById('translateInput');
   const box=document.getElementById('translateResult');
   const text=input.value.trim();
-  if(!text){ toast('먼저 한글로 문장을 입력해주세요.'); return; }
+  if(!text){ toast('먼저 문장을 입력해주세요.'); return; }
+  const ja2ko = ui.translateDir==='ja2ko';
+  const sl = ja2ko ? 'ja' : 'ko', tl = ja2ko ? 'ko' : 'ja';
   box.innerHTML=`<div class="banner info" style="margin-top:10px;">🔄 번역 중이에요...</div>`;
-  const result=await translateKoToJa(text);
+  const result=await translateText(text, sl, tl);
   if(!result.ok){
     box.innerHTML=`<div class="banner" style="margin-top:10px;">⚠️ 번역에 실패했어요. 인터넷 연결을 확인하고 다시 시도해주세요.</div>`;
     return;
   }
   __lastTranslation=result.text;
-  box.innerHTML=`<div class="jpcard on" style="margin-top:10px; cursor:pointer;" onclick="speakJapanese(__lastTranslation)">
+  box.innerHTML=`<div class="jpcard on" style="margin-top:10px; cursor:pointer;" onclick="${ja2ko?'speakKorean':'speakJapanese'}(__lastTranslation)">
     <div class="jpcard-main">
       <div class="jpjp">${escapeHtml(result.text)} <span class="jpspk">🔊</span></div>
       <div class="jpkr">${escapeHtml(text)}</div>
     </div>
   </div>`;
-  speakJapanese(result.text);
+  if(ja2ko) speakKorean(result.text); else speakJapanese(result.text);
+  if(ja2ko){
+    /* 상대방 말을 들려주는 건 "한 번 쓰고 끝"이라, 다음 문장을 또 입력할 수 있게
+       자동으로 기본 방향(한국어→일본어)으로 되돌려요. 방금 본 번역 결과는 지우지 않음. */
+    ui.translateDir='ko2ja';
+    input.value='';
+    applyTranslateDirUI();
+    toast('🔁 다시 "한국어 → 일본어" 모드로 돌아왔어요');
+  }
 }
 let __recognizer=null;
 function startVoiceInput(){
   const SR=window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){ toast('이 기기에서는 음성 입력을 지원하지 않아요. 타이핑해주세요.'); return; }
   const btn=document.getElementById('micBtn');
+  const ja2ko = ui.translateDir==='ja2ko';
   try{
     __recognizer=new SR();
-    __recognizer.lang='ko-KR'; __recognizer.interimResults=false; __recognizer.maxAlternatives=1;
+    __recognizer.lang = ja2ko ? 'ja-JP' : 'ko-KR';
+    __recognizer.interimResults=false; __recognizer.maxAlternatives=1;
     if(btn){ btn.textContent='🎤 듣고 있어요...'; btn.disabled=true; }
     __recognizer.onresult=(e)=>{
       const said=e.results[0][0].transcript;
@@ -963,9 +1008,9 @@ function startVoiceInput(){
       runTranslate();
     };
     __recognizer.onerror=()=>{ toast('음성을 알아듣지 못했어요. 다시 시도해주세요.'); };
-    __recognizer.onend=()=>{ if(btn){ btn.textContent='🎤 말하기'; btn.disabled=false; } };
+    __recognizer.onend=()=>{ if(btn){ btn.disabled=false; } applyTranslateDirUI(); };
     __recognizer.start();
-  }catch(e){ toast('음성 입력을 시작할 수 없어요.'); if(btn){ btn.textContent='🎤 말하기'; btn.disabled=false; } }
+  }catch(e){ toast('음성 입력을 시작할 수 없어요.'); if(btn){ btn.disabled=false; } applyTranslateDirUI(); }
 }
 
 function toggleJpLearned(ci,ii){
@@ -979,16 +1024,21 @@ function viewJapanese(){
   const learned=getJpLearned(), total=jpAllCount(), done=jpLearnedCount();
   const ci=ui.jpCat||0, cat=JAPANESE_PHRASES[ci];
   const micSupported=!!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  ui.translateDir='ko2ja'; // 일본어 탭에 새로 들어올 때는 항상 기본 방향(한국어→일본어)에서 시작
   let html=`<div class="wrap" style="padding-bottom:4px;">
     <div class="card"><h3>🗣️ 실시간 번역기</h3>
-      <p>하고 싶은 말을 한글로 써보세요. 일본어로 바꿔주고 소리도 들려줘요!</p>
+      <div id="dirToggle" onclick="toggleTranslateDir()" style="display:flex; align-items:center; justify-content:center; gap:8px; background:var(--parchment); border:1.5px dashed var(--brass); border-radius:999px; padding:8px 12px; cursor:pointer; margin-bottom:8px;">
+        <span id="dirToggleLabel" style="font-weight:700; font-size:13px; color:var(--brass-deep);">🇰🇷 한국어 → 🇯🇵 일본어</span><span style="font-size:15px;">🔄</span>
+      </div>
+      <p id="translateHint" style="margin:0;">하고 싶은 말을 한글로 써보세요. 일본어로 바꿔주고 소리도 들려줘요!</p>
       <textarea id="translateInput" maxlength="200" rows="2" placeholder="예: 화장실이 어디예요?" style="margin-top:8px;"></textarea>
       <div style="display:flex; gap:8px; margin-top:8px;">
-        ${micSupported?`<button class="btn ghost sm" id="micBtn" onclick="startVoiceInput()">🎤 말하기</button>`:''}
-        <button class="btn gold sm" style="flex:1;" onclick="runTranslate()">🇯🇵 번역하기</button>
+        ${micSupported?`<button class="btn ghost sm" id="micBtn" onclick="startVoiceInput()">🎤 한국어로 말하기</button>`:''}
+        <button class="btn gold sm" style="flex:1;" onclick="runTranslate()">🔊 번역하고 듣기</button>
       </div>
       <div id="translateResult"></div>
       ${!micSupported?`<p style="font-size:11px; color:var(--ink-faint); margin-top:6px;">이 기기에서는 음성 입력이 지원되지 않아요. 타이핑해서 사용해주세요.</p>`:''}
+      <p style="font-size:11px; color:var(--ink-faint); margin-top:8px;">💡 배지를 누르면 상대방이 일본어로 한 말을 한국어로 들을 수 있어요. 한 번 쓰면 자동으로 원래대로 돌아와요.</p>
     </div>
     <div class="card" style="text-align:center;"><h3 style="justify-content:center;">🇯🇵 여행 일본어 미션</h3>
       <p>카드를 탭하면 발음을 들려줘요.<br>외운 표현을 체크하면 <b>5점씩 랭킹에 합산</b>돼요!</p>
