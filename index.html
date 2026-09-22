@@ -110,6 +110,9 @@ main{flex:1; padding-bottom:24px;}
 .btn.ghost{background:transparent; border:1.5px solid var(--line); color:var(--ink); font-weight:600;}
 .btn.listening{background:#fdeaea !important; border-color:var(--stamp) !important; color:#b3261e !important; animation:micPulse 1.1s ease-in-out infinite;}
 @keyframes micPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(239,77,107,.35);} 50%{ box-shadow:0 0 0 7px rgba(239,77,107,.14);} }
+.mic-fab{position:absolute; right:6px; bottom:6px; width:34px; height:34px; border-radius:50%; border:none; background:var(--navy-800); color:#fff; font-size:15px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; transition:transform .12s;}
+.mic-fab:active{transform:scale(.92);}
+.mic-fab.listening{background:var(--stamp); animation:micPulse 1.1s ease-in-out infinite;}
 .btn.block{width:100%;}
 .btn.sm{padding:8px 12px; font-size:12.5px; border-radius:9px;}
 input[type=text], input[type=number], input[type=tel], input[type=password], textarea, select {
@@ -177,10 +180,10 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
 .pcap{font-size:11px; color:var(--ink-soft); margin-top:4px;}
 .pdelete{position:absolute; top:6px; right:6px; width:26px; height:26px; border-radius:50%; border:none; background:rgba(20,20,20,.6); color:#fff; font-size:13px; font-weight:700; line-height:1; cursor:pointer; z-index:2; display:flex; align-items:center; justify-content:center;}
 .upload-box{border:1.5px dashed var(--brass); border-radius:var(--radius-sm); padding:22px 10px; text-align:center; color:var(--brass-deep); font-size:13px; font-weight:600; cursor:pointer; background:#faf5e9;}
-.gcard{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); margin-bottom:14px;}
-.gcard-img{width:100%; height:150px; object-fit:cover; display:block; background:var(--line);}
-.gcard-img.ph{display:flex; align-items:center; justify-content:center; font-size:46px; color:#fff; text-shadow:0 1px 8px rgba(0,0,0,.25);}
-.gcard-body{padding:16px;}
+.gcard{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); margin-bottom:14px; display:flex; gap:12px; padding:12px; align-items:flex-start;}
+.gcard-thumb{flex-shrink:0; width:92px; height:92px; border-radius:14px; object-fit:cover; display:block; background:var(--line);}
+.gcard-thumb.ph{display:flex; align-items:center; justify-content:center; font-size:32px; color:#fff; text-shadow:0 1px 6px rgba(0,0,0,.25);}
+.gcard-body{padding:0; flex:1; min-width:0;}
 .gcard-body h3{font-size:15.5px;}
 .gcard-body p{margin:0; color:var(--ink-soft); font-size:13.5px; line-height:1.6;}
 .ranklist{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
@@ -248,7 +251,7 @@ label.field{display:block; font-size:12px; color:var(--ink-soft); margin:0 0 6px
    그래서 GitHub에 새 버전을 올려도 아이콘으로 열면 계속 예전 내용이 보일 수 있어요.
    화면이 다시 보일 때마다(홈 화면 아이콘으로 다시 열 때 포함) 서버의 최신 파일을
    캐시 없이 확인해서, 버전이 다르면 자동으로 새로고침해요. */
-const APP_BUILD = '2026-09-22-06';
+const APP_BUILD = '2026-09-22-07';
 let __updateChecking = false;
 async function checkForUpdate(){
   if(__updateChecking) return;
@@ -939,21 +942,20 @@ function speakKorean(text){
     window.speechSynthesis.speak(u);
   }catch(e){ toast('음성 재생에 실패했어요.'); }
 }
-/* 배지 문구·입력창 안내·마이크 버튼 문구를 지금 방향(ui.translateDir)에 맞게 갈아끼움.
+/* 언어 칩(chipFrom/chipTo)·입력창 안내를 지금 방향(ui.translateDir)에 맞게 갈아끼움.
    결과 카드(translateResult)는 건드리지 않아서, 번역 직후 자동으로 방향을 되돌려도
    방금 본 번역 결과는 화면에 그대로 남아있어요. */
 function applyTranslateDirUI(){
   const ja2ko = ui.translateDir==='ja2ko';
-  const label=document.getElementById('dirToggleLabel');
-  if(label) label.textContent = ja2ko ? '🇯🇵 일본어 → 🇰🇷 한국어' : '🇰🇷 한국어 → 🇯🇵 일본어';
-  const hint=document.getElementById('translateHint');
-  if(hint) hint.textContent = ja2ko
-    ? '상대방이 일본어로 말하면 🎤를 눌러 들려주세요. 다 말했으면 번역 버튼을 눌러 확인하세요!'
-    : '한글로 써도 되고, 🎤를 눌러 말해도 돼요. 다 말했으면 번역 버튼을 눌러주세요!';
+  const from=document.getElementById('chipFrom'), to=document.getElementById('chipTo');
+  if(from && to){
+    from.textContent = ja2ko ? '🇯🇵 일본어' : '🇰🇷 한국어';
+    to.textContent = ja2ko ? '🇰🇷 한국어' : '🇯🇵 일본어';
+    from.style.background='var(--navy-800)'; from.style.color='#f4ecd8';
+    to.style.background='var(--parchment)'; to.style.color='var(--ink-soft)';
+  }
   const input=document.getElementById('translateInput');
   if(input) input.placeholder = ja2ko ? '🎤를 눌러 일본어를 들려주세요' : '예: 화장실이 어디예요?';
-  const mic=document.getElementById('micBtn');
-  if(mic && !__recognizer) mic.textContent = ja2ko ? '🎤 일본어 듣기' : '🎤 한국어로 말하기';
 }
 function toggleTranslateDir(){
   if(__recognizer){ toast('듣고 있는 중에는 방향을 바꿀 수 없어요. 먼저 🎤를 눌러 멈춰주세요.'); return; }
@@ -1016,8 +1018,8 @@ function startVoiceInput(){
     __recognizer.interimResults=true;
     __recognizer.continuous=true;
     __recognizer.maxAlternatives=1;
-    if(btn){ btn.textContent='🔴 듣는 중... (다시 눌러 멈춤)'; btn.classList.add('listening'); }
-    const dirBadge=document.getElementById('dirToggle'); if(dirBadge) dirBadge.style.opacity='.5';
+    if(btn){ btn.title='듣는 중... (다시 눌러 멈춤)'; btn.classList.add('listening'); }
+    const dirBadge=document.getElementById('dirSwapBtn'); if(dirBadge) dirBadge.style.opacity='.5';
     __recognizer.onresult=(e)=>{
       let interim='';
       for(let i=e.resultIndex; i<e.results.length; i++){
@@ -1033,8 +1035,8 @@ function startVoiceInput(){
     __recognizer.onend=()=>{
       __recognizer=null;
       if(__recStopTimer){ clearTimeout(__recStopTimer); __recStopTimer=null; }
-      if(btn) btn.classList.remove('listening');
-      const dirBadge=document.getElementById('dirToggle'); if(dirBadge) dirBadge.style.opacity='';
+      if(btn){ btn.classList.remove('listening'); btn.title='말하기'; }
+      const dirBadge=document.getElementById('dirSwapBtn'); if(dirBadge) dirBadge.style.opacity='';
       applyTranslateDirUI();
     };
     __recognizer.start();
@@ -1061,18 +1063,19 @@ function viewJapanese(){
   ui.translateDir='ko2ja'; // 일본어 탭에 새로 들어올 때는 항상 기본 방향(한국어→일본어)에서 시작
   let html=`<div class="wrap" style="padding-bottom:4px;">
     <div class="card"><h3>🗣️ 실시간 번역기</h3>
-      <div id="dirToggle" onclick="toggleTranslateDir()" style="display:flex; align-items:center; justify-content:center; gap:8px; background:var(--parchment); border:1.5px dashed var(--brass); border-radius:999px; padding:8px 12px; cursor:pointer; margin-bottom:8px;">
-        <span id="dirToggleLabel" style="font-weight:700; font-size:13px; color:var(--brass-deep);">🇰🇷 한국어 → 🇯🇵 일본어</span><span style="font-size:15px;">🔄</span>
+      <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:10px;">
+        <span id="chipFrom" style="flex:1; text-align:center; padding:9px 4px; border-radius:12px; font-weight:700; font-size:13px; background:var(--navy-800); color:#f4ecd8; transition:background .15s,color .15s;">🇰🇷 한국어</span>
+        <button id="dirSwapBtn" onclick="toggleTranslateDir()" title="방향 바꾸기" style="flex-shrink:0; width:36px; height:36px; border-radius:50%; border:1.5px solid var(--brass); background:var(--paper); color:var(--brass-deep); font-size:17px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">⇄</button>
+        <span id="chipTo" style="flex:1; text-align:center; padding:9px 4px; border-radius:12px; font-weight:700; font-size:13px; background:var(--parchment); color:var(--ink-soft); transition:background .15s,color .15s;">🇯🇵 일본어</span>
       </div>
-      <p id="translateHint" style="margin:0;">한글로 써도 되고, 🎤를 눌러 말해도 돼요. 다 말했으면 번역 버튼을 눌러주세요!</p>
-      <textarea id="translateInput" maxlength="200" rows="2" placeholder="예: 화장실이 어디예요?" style="margin-top:8px;"></textarea>
-      <div style="display:flex; gap:8px; margin-top:8px;">
-        ${micSupported?`<button class="btn ghost sm" id="micBtn" onclick="startVoiceInput()">🎤 한국어로 말하기</button>`:''}
-        <button class="btn gold sm" style="flex:1;" onclick="runTranslate()">🔊 번역하고 듣기</button>
+      <p style="margin:0 0 8px; font-size:12px; color:var(--ink-soft);">🎤를 눌러 말하거나 직접 써보세요. 다 말했으면 번역 버튼을 눌러주세요!</p>
+      <div style="position:relative;">
+        <textarea id="translateInput" maxlength="200" rows="2" placeholder="예: 화장실이 어디예요?" style="${micSupported?'padding-right:46px;':''}"></textarea>
+        ${micSupported?`<button class="mic-fab" id="micBtn" onclick="startVoiceInput()" title="말하기">🎤</button>`:''}
       </div>
+      <button class="btn gold block" style="margin-top:10px;" onclick="runTranslate()">🔊 번역하기</button>
       <div id="translateResult"></div>
       ${!micSupported?`<p style="font-size:11px; color:var(--ink-faint); margin-top:6px;">이 기기에서는 음성 입력이 지원되지 않아요. 타이핑해서 사용해주세요.</p>`:''}
-      <p style="font-size:11px; color:var(--ink-faint); margin-top:8px;">💡 배지를 누르면 상대방이 일본어로 한 말을 한국어로 들을 수 있어요. 한 번 쓰면 자동으로 원래대로 돌아와요.</p>
     </div>
     <div class="card" style="text-align:center;"><h3 style="justify-content:center;">🇯🇵 여행 일본어 미션</h3>
       <p>카드를 탭하면 발음을 들려줘요.<br>외운 표현을 체크하면 <b>5점씩 랭킹에 합산</b>돼요!</p>
@@ -1308,12 +1311,12 @@ function infoSeats(){
   return html;
 }
 
-function guideImgError(el, icon, c1, c2){ el.outerHTML = `<div class="gcard-img ph" style="background:linear-gradient(135deg,${c1},${c2})">${icon}</div>`; }
+function guideImgError(el, icon, c1, c2){ el.outerHTML = `<div class="gcard-thumb ph" style="background:linear-gradient(135deg,${c1},${c2})">${icon}</div>`; }
 function infoGuide(){
   let html=`<div class="section-title">📍 우리가 가는 곳 (스탬프 랠리)</div>`;
   html+=GUIDE.map(g=>{ const mapUrl='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(g.name+' '+g.area+' Japan');
-    const media=g.img?`<img class="gcard-img" src="${g.img}" alt="${g.name}" loading="lazy" onerror="guideImgError(this,'${g.icon}','${g.grad[0]}','${g.grad[1]}')">`:`<div class="gcard-img ph" style="background:linear-gradient(135deg,${g.grad[0]},${g.grad[1]})">${g.icon}</div>`;
-    return `<div class="gcard">${media}<div class="gcard-body"><div class="row-between"><h3 style="margin:0; display:flex; align-items:center; gap:7px;">${g.icon} ${g.name}</h3><span class="tag">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><div class="banner" style="margin-top:10px;">💡 ${g.tip}</div><a class="btn ghost block sm" style="display:block; text-align:center; text-decoration:none;" href="${mapUrl}" target="_blank" rel="noopener">🗺️ 구글 지도에서 보기</a></div></div>`; }).join('');
+    const media=g.img?`<img class="gcard-thumb" src="${g.img}" alt="${g.name}" loading="lazy" onerror="guideImgError(this,'${g.icon}','${g.grad[0]}','${g.grad[1]}')">`:`<div class="gcard-thumb ph" style="background:linear-gradient(135deg,${g.grad[0]},${g.grad[1]})">${g.icon}</div>`;
+    return `<div class="gcard">${media}<div class="gcard-body"><div class="row-between" style="flex-wrap:wrap; gap:5px;"><h3 style="margin:0; display:flex; align-items:center; gap:6px;">${g.icon} ${g.name}</h3><span class="tag">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><div class="banner" style="margin-top:10px;">💡 ${g.tip}</div><a class="btn ghost block sm" style="display:block; text-align:center; text-decoration:none;" href="${mapUrl}" target="_blank" rel="noopener">🗺️ 구글 지도에서 보기</a></div></div>`; }).join('');
   html+=`<div class="section-title" style="margin-top:6px;">💡 알아두면 좋아요</div><p style="font-size:12px; color:var(--ink-soft); margin:-4px 0 12px;">방문 일정에는 없지만, 여행 중 필요할 때 찾아두면 도움이 되는 장소들이에요. 우리가 실제로 가는 도시 근처를 기준으로 찾아줘요.</p>`;
   html+=USEFUL_SPOTS.map(g=>{
     const kw=g.name.replace(/\s*\(.*?\)\s*/g,'');
@@ -1321,7 +1324,7 @@ function infoGuide(){
       const mapUrl='https://www.google.com/maps/search/'+encodeURIComponent(kw)+'/@'+c.lat+','+c.lng+',16z';
       return `<a class="btn ghost sm" style="flex:1; text-align:center; text-decoration:none; padding:8px 4px;" href="${mapUrl}" target="_blank" rel="noopener">${city}</a>`;
     }).join('');
-    return `<div class="gcard"><div class="gcard-body"><div class="row-between"><h3 style="margin:0; display:flex; align-items:center; gap:7px;">${g.icon} ${g.name}</h3><span class="tag blue">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><p style="font-size:11px; color:var(--ink-faint); margin:8px 0 5px;">🗺️ 우리가 가는 곳 근처에서 찾기</p><div style="display:flex; gap:6px;">${cityBtns}</div></div></div>`; }).join('');
+    return `<div class="gcard"><div class="gcard-thumb ph" style="background:linear-gradient(135deg,#e7ecff,#d7deff); color:var(--navy-800); text-shadow:none;">${g.icon}</div><div class="gcard-body"><div class="row-between" style="flex-wrap:wrap; gap:5px;"><h3 style="margin:0; display:flex; align-items:center; gap:6px;">${g.icon} ${g.name}</h3><span class="tag blue">${g.area}</span></div><p style="margin-top:6px;">${g.desc}</p><p style="font-size:11px; color:var(--ink-faint); margin:8px 0 5px;">🗺️ 우리가 가는 곳 근처에서 찾기</p><div style="display:flex; gap:6px;">${cityBtns}</div></div></div>`; }).join('');
   return html;
 }
 function infoSafety(){ const sec=(title,list)=>`<div class="card"><h3>${title}</h3>${list.map((r,i)=>`<div style="display:flex; gap:10px; padding:8px 0; ${i?'border-top:1px solid var(--line);':''}"><span style="color:var(--brass-deep); font-weight:700;">${i+1}</span><span style="font-size:13.5px;">${r}</span></div>`).join('')}</div>`; return sec('🛡️ 안전 수칙', SAFETY_RULES)+sec('📱 휴대폰 사용', PHONE_RULES)+sec('💴 용돈 · 결제', MONEY_RULES)+sec('🏨 호텔 매너 7가지', HOTEL_MANNERS)+sec('🌏 해외여행 특별 수칙', OVERSEAS_RULES); }
